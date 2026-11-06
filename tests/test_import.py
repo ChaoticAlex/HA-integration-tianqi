@@ -15,15 +15,31 @@ INTEGRATION_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _mod(name, **attrs):
-    mod = types.ModuleType(name)
-    mod.__path__ = []  # 当作 package，允许子模块
+    """注册/复用桩模块。幂等：重复调用不会替换已有模块对象。"""
+    mod = sys.modules.get(name)
+    if mod is None:
+        mod = types.ModuleType(name)
+        mod.__path__ = []  # 当作 package，允许子模块
+        sys.modules[name] = mod
     for key, value in attrs.items():
         setattr(mod, key, value)
-    sys.modules[name] = mod
     return mod
 
 
+async def _async_noop(*args, **kwargs):
+    return None
+
+
 class _Unit:
+    """模拟 UnitOfXxx 枚举，既能被实例化也能取类属性。"""
+
+    CELSIUS = '°C'
+    HPA = 'hPa'
+    KILOMETERS_PER_HOUR = 'km/h'
+    KILOMETERS = 'km'
+    MILLIMETERS = 'mm'
+    DEGREES = '°'
+
     def __init__(self, value):
         self.value = value
 
@@ -90,7 +106,10 @@ def install_stubs():
          CONN_CLASS_CLOUD_POLL='cloud_poll')
     _mod('homeassistant.helpers')
     _mod('homeassistant.helpers.entity',
-         Entity=type('Entity', (), {'async_write_ha_state': lambda self: None}),
+         Entity=type('Entity', (), {
+             'async_write_ha_state': lambda self: None,
+             'async_added_to_hass': _async_noop,
+         }),
          EntityCategory=type('EntityCategory', (), {'DIAGNOSTIC': 'diagnostic'}))
     _mod('homeassistant.helpers.aiohttp_client',
          async_create_clientsession=lambda *a, **k: None)
@@ -153,7 +172,6 @@ class TestImport(unittest.TestCase):
     def test_submodules_import(self):
         for name in (
             'custom_components.tianqi.weather',
-            'custom_components.tianqi.sensor',
             'custom_components.tianqi.binary_sensor',
             'custom_components.tianqi.config_flow',
             'custom_components.tianqi.converters.base',
@@ -169,42 +187,19 @@ class TestImport(unittest.TestCase):
         self.assertEqual(TianqiConfigFlow.domain, DOMAIN)
 
     def test_converters_registered(self):
-        convs = ['AlarmsBinarySensorConv', 'ForecastMinutelySensorConv']
+        convs = ['AlarmsBinarySensorConv']
         mod = __import__('custom_components.tianqi.converters.base', fromlist=convs)
         for name in convs:
             conv = getattr(mod, name)()
             self.assertTrue(conv.attr, name)
             self.assertIn(conv.domain, ('sensor', 'binary_sensor'), name)
 
-    def test_minutely_attributes_compacted(self):
-        """分钟级降水不得把每个时间戳都写成一条属性。"""
-        from custom_components.tianqi.converters.base import ForecastMinutelySensorConv
-
-        class _Client:
-            data = {
-                'minutely': {
-                    'msg': '未来2小时不会下雨',
-                    'times': ['2026-11-06 10:42:00', '2026-11-06 10:48:00'],
-                    'values': [0.0, 0.3],
-                }
-            }
-
-        payload = {}
-        conv = ForecastMinutelySensorConv()
-        conv.decode(_Client(), payload, '未来2小时不会下雨')
-        self.assertEqual(
-            set(payload),
-            {'forecast_minutely', 'forecast_minutely_start',
-             'forecast_minutely_values', 'forecast_minutely_step'},
-        )
-        self.assertEqual(payload['forecast_minutely_values'], [0.0, 0.3])
-        self.assertEqual(len(payload), 4)  # 不是每个时间戳一条
-
     def test_no_duplicate_entity_converters(self):
         """温度/湿度/气压/能见度/风速/风向已在 weather 实体属性里，不得再建实体。"""
         mod = __import__('custom_components.tianqi.converters.base', fromlist=['x'])
         for dead in (
             'WindSpeedSensorConv', 'WindBearingSensorConv', 'WindForceSensorConv',
+            'ForecastMinutelySensorConv',
         ):
             self.assertFalse(hasattr(mod, dead), dead)
 

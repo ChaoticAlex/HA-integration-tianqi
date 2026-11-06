@@ -29,20 +29,6 @@
     "error": {}
   },
   "entity": {
-    "sensor": {
-      "precipitation": {
-        "name": "Precipitation (1h)"
-      },
-      "precipitation_24h": {
-        "name": "Precipitation (24h)"
-      },
-      "aqi": {
-        "name": "AQI"
-      },
-      "forecast_minutely": {
-        "name": "Minutely forecast"
-      }
-    },
     "binary_sensor": {
       "warning": {
         "name": "Weather warning"

@@ -14,11 +14,6 @@ from homeassistant.const import (
     Platform,
     CONF_DOMAIN,
     EVENT_HOMEASSISTANT_STOP,
-    PERCENTAGE,
-    UnitOfLength,
-    UnitOfPressure,
-    UnitOfTemperature,
-    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
 )
 from homeassistant.core import HomeAssistant, State, ServiceCall, SupportsResponse, callback
 from homeassistant.helpers.entity import Entity
@@ -36,7 +31,6 @@ _LOGGER = logging.getLogger(__name__)
 
 SUPPORTED_PLATFORMS = [
     Platform.WEATHER,
-    Platform.SENSOR,
     Platform.BINARY_SENSOR,
 ]
 HTTP_REFERER = base64.b64decode('aHR0cHM6Ly9tLndlYXRoZXIuY29tLmNuLw==').decode()
@@ -284,25 +278,9 @@ class TianqiClient:
         self._remove_listeners = []
 
         self.converters = {}
-        # 只保留 weather 实体状态属性里拿不到的数据（非必要不增实体）：
-        # 温度/湿度/气压/能见度/风速/风向 已在 weather 实体属性中，不重复建传感器。
+        # 方案 B：只保留 weather 实体 + 预警 binary_sensor。
+        # 雨量/AQI/分钟级降水/生活指数都进 weather 实体的状态属性，不另建实体。
         self.add_converters(
-            NumberSensorConv('precipitation', prop='rain').with_option({
-                'device_class': 'precipitation',
-                'state_class': 'measurement',
-                'unit_of_measurement': UnitOfLength.MILLIMETERS,
-            }),
-            NumberSensorConv('precipitation_24h', prop='rain24h').with_option({
-                'device_class': 'precipitation',
-                'state_class': 'measurement',
-                'unit_of_measurement': UnitOfLength.MILLIMETERS,
-            }),
-            # 上游 aqi_pm25 实测与 aqi 完全同值，是空气质量指数而非 PM2.5 浓度
-            NumberSensorConv('aqi', prop='aqi').with_option({
-                'device_class': 'aqi',
-                'state_class': 'measurement',
-            }),
-            ForecastMinutelySensorConv(),
             AlarmsBinarySensorConv(),
         )
 

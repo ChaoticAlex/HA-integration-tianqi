@@ -8,20 +8,22 @@ Home Assistant 自定义集成，用 `weather` 实体提供中国天气网的实
 
 ## 实体
 
-**一设备 6 个实体**，只保留 `weather` 实体状态属性里拿不到的数据（非必要不增实体）。
+**一设备 2 个实体**，与 HA 内置天气集成（`xiaomi_weather` / `open_meteo` / `met`）保持同构：
+天气数据只通过 `weather` 实体交付，其余信息进状态属性。
 
 | 实体 | 说明 |
 |---|---|
-| `weather.<站>` | 实况 + 日预报 15 天 + 逐时 48 小时。状态属性含 temperature / humidity / pressure / wind_bearing(°) / wind_speed / visibility / 30 项生活指数 |
-| `sensor.<站>_precipitation` | 1 小时降水量，mm |
-| `sensor.<站>_precipitation_24h` | 24 小时降水量，mm |
-| `sensor.<站>_aqi` | 空气质量指数（`device_class: aqi`，无单位） |
-| `sensor.<站>_forecast_minutely` | 分钟级降水描述，属性含未来 2 小时逐 6 分钟值 |
-| `binary_sensor.<站>_warning` | `device_class: problem`，预警状态 + `alarms` 明细 |
+| `weather.<站>` | 实况 + 日预报 15 天 + 逐时 48 小时 + **白天/夜间（twice daily）** |
+| `binary_sensor.<站>_warning` | `device_class: problem`，预警状态 + `alarms` 明细（供自动化 `state` 触发） |
 
-已删除（数据与 `weather` 实体重复）：`temperature` / `humidity` / `atmospheric_pressure` /
-`visibility` / `wind_speed` / `wind_bearing` / `wind_force` / `limit_number`。
-需要在自动化里单独引用时，用 `state_attr('weather.<站>', 'wind_bearing')` 取值。
+`weather` 实体状态属性：
+
+- 标准：`temperature` / `humidity` / `pressure` / `wind_bearing`(度) / `wind_speed` / `visibility`
+- 该集成补充：`precipitation_1h` / `precipitation_24h` / `aqi` / `forecast_minutely` +
+  `forecast_minutely_values` / `forecast_minutely_start` / `indexes`（生活指数）/ `condition_text`
+
+> 这些补充值只作为属性提供：可用于模板与自动化，但**不进长期统计（statistics）**。
+> 需要历史曲线时，可用 `template: sensor` 自行派生，或从上游页面取。
 
 ## 安装
 

@@ -9,7 +9,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'custom_components' / 'tianqi'))
 
-from const import build_daily_row, build_hourly_row  # noqa: E402
+from const import (  # noqa: E402
+    build_daily_row,
+    build_hourly_row,
+    build_twice_daily_rows,
+)
 
 # HA Forecast TypedDict 允许的键（datetime 由实体层补）
 DAILY_KEYS = {
@@ -90,6 +94,32 @@ class TestHourlyRow(unittest.TestCase):
     def test_no_fake_cloud(self):
         row = build_hourly_row({**HOURLY_DL_CLEAR, 'jh': '180'})
         self.assertNotIn('cloud_coverage', row)
+
+
+class TestTwiceDailyRows(unittest.TestCase):
+    def test_two_rows_with_is_daytime(self):
+        rows = build_twice_daily_rows(DAILY_GZ_TODAY)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual([r['is_daytime'] for r in rows], [True, False])
+
+    def test_day_and_night_values(self):
+        rows = build_twice_daily_rows(DAILY_GZ_TODAY)
+        day, night = rows
+        self.assertEqual(day['condition'], 'rainy')      # fa=07 小雨
+        self.assertEqual(day['native_temperature'], 31.0)  # fc 最高
+        self.assertEqual(night['condition'], 'partlycloudy')  # fb=01 多云
+        self.assertEqual(night['native_temperature'], 21.0)  # fd 最低
+
+    def test_is_daytime_always_present(self):
+        """HA 对 twice_daily 强校验 is_daytime，缺了会 ValueError。"""
+        for rows in (build_twice_daily_rows(DAILY_GZ_TODAY),
+                     build_twice_daily_rows(DAILY_GZ_YESTERDAY)):
+            for row in rows:
+                self.assertIn('is_daytime', row)
+
+    def test_unknown_codes(self):
+        rows = build_twice_daily_rows({**DAILY_GZ_TODAY, 'fa': '99', 'fb': '99'})
+        self.assertEqual(rows, [])
 
 
 class TestConditionTable(unittest.TestCase):

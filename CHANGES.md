@@ -1,5 +1,21 @@
 # 改造记录（严格 HA 标准版）
 
+## 1.0.3 — 方案 B：2 个实体 + twice daily
+
+对齐 HA 内置天气集成的取舍（`xiaomi_weather` / `open_meteo` / `met` 都只有 1 个 weather 实体、
+0 个额外 sensor、0 条自定义属性）：
+
+| 变更 | 说明 |
+|---|---|
+| 实体 6 → **2** | 只留 `weather.<站>` + `binary_sensor.<站>_warning` |
+| 删除 4 个 sensor | `precipitation` / `precipitation_24h` / `aqi` / `forecast_minutely` 改为 `weather` 属性 |
+| 删除 sensor 平台 | `sensor.py` 移除，`SUPPORTED_PLATFORMS` 只留 weather + binary_sensor |
+| 新增 `FORECAST_TWICE_DAILY` | 用上游 `fa`(白天码)/`fb`(夜间码)、`fc`/`fd`(最高/最低温)、`fe`/`fg`(白天风)、`ff`/`fh`(夜间风)；`is_daytime` 必填，白天 08:00、夜间 20:00 |
+| 预警仍是实体 | 预警是状态机事件，需 `state` 触发器；做属性只能靠轮询/template trigger |
+
+**破坏性**：`sensor.<站>_precipitation`、`_precipitation_24h`、`_aqi`、`_forecast_minutely`
+四个实体 ID 消失，改用 `state_attr('weather.<站>', 'aqi')` 等。
+
 ## 1.0.2 — 实体瘦身（非必要不增实体）
 
 | 变更 | 说明 |

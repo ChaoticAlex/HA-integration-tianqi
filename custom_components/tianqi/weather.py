@@ -36,6 +36,7 @@ from .const import (
     as_float,
     build_daily_row,
     build_hourly_row,
+    build_twice_daily_rows,
     wind_bearing_to_degrees,
 )
 
@@ -83,9 +84,10 @@ class WeatherEntity(BaseEntity):
         self._attr_extra_state_attributes = {}
         self._attr_device_info = client.device_info
         if WeatherEntityFeature:
-            self._attr_supported_features = (
-                WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
-            )
+            features = WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
+            if hasattr(WeatherEntityFeature, 'FORECAST_TWICE_DAILY'):
+                features |= WeatherEntityFeature.FORECAST_TWICE_DAILY
+            self._attr_supported_features = features
 
     async def async_added_to_hass(self):
         self.added = True
@@ -128,10 +130,28 @@ class WeatherEntity(BaseEntity):
         }
         if indexes:
             attrs['indexes'] = indexes
+
+        # 以下数据 HA weather 域没有对应字段：作为属性而非独立实体
+        if (val := as_float(dataSK.get('rain'))) is not None:
+            attrs['precipitation_1h'] = val
+        if (val := as_float(dataSK.get('rain24h'))) is not None:
+            attrs['precipitation_24h'] = val
+        if (val := as_float(dataSK.get('aqi'))) is not None:
+            attrs['aqi'] = val
+
+        minutely = dat.get('minutely') or {}
+        if minutely.get('msg'):
+            attrs['forecast_minutely'] = minutely['msg']
+            if minutely.get('times') and minutely.get('values'):
+                attrs['forecast_minutely_start'] = minutely['times'][0]
+                attrs['forecast_minutely_values'] = minutely['values']
+                attrs['forecast_minutely_step'] = 6
+
         self._attr_extra_state_attributes = attrs
 
         await self.async_forecast_daily()
         await self.async_forecast_hourly()
+        await self.async_forecast_twice_daily()
         self.async_write_ha_state()
 
     async def async_forecast_daily(self) -> list[Forecast] | None:
@@ -163,6 +183,35 @@ class WeatherEntity(BaseEntity):
             row['datetime'] = tim
             lst.append(row)
             prev = tim
+        return lst
+
+    async def async_forecast_twice_daily(self) -> list[Forecast] | None:
+        """白天/夜间预报：is_daytime 必填（HA 强校验），白天 08:00、夜间 20:00。"""
+        if 'dailies' not in self.client.data:
+            await self.client.update_dailies()
+
+        today = dt_util.start_of_local_day()
+        lst: list[Forecast] = []
+        for item in self.client.data.get('dailies', []):
+            if len(lst) >= DAILY_FORECAST_LIMIT * 2:
+                break
+            try:
+                month, day = (int(v) for v in f'{item.get("fi")}'.split('/'))
+                base = today.replace(
+                    year=today.year + 1 if month < today.month else today.year,
+                    month=month,
+                    day=day,
+                )
+            except (TypeError, ValueError):
+                continue
+
+            rows = build_twice_daily_rows(item)
+            for row in rows:
+                tim = base.replace(hour=8 if row['is_daytime'] else 20)
+                if tim < (lst[-1]['datetime'] if lst else today):
+                    continue
+                row['datetime'] = tim
+                lst.append(row)
         return lst
 
     async def async_forecast_hourly(self) -> list[Forecast] | None:

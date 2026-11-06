@@ -29,20 +29,6 @@
     "error": {}
   },
   "entity": {
-    "sensor": {
-      "precipitation": {
-        "name": "降水量(1小时)"
-      },
-      "precipitation_24h": {
-        "name": "降水量24h"
-      },
-      "aqi": {
-        "name": "空气质量指数(AQI)"
-      },
-      "forecast_minutely": {
-        "name": "分钟级降水"
-      }
-    },
     "binary_sensor": {
       "warning": {
         "name": "气象预警"

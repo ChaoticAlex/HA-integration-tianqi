@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any, Optional, TYPE_CHECKING
 import re
 
-from ..const import as_float
 
 if TYPE_CHECKING:
     from .. import TianqiClient as Client
@@ -37,47 +36,6 @@ class Converter:
     def with_option(self, option: dict):
         self.option = option
         return self
-
-
-@dataclass
-class SensorConv(Converter):
-    domain: Optional[str] = 'sensor'
-
-
-@dataclass
-class NumberSensorConv(SensorConv):
-    unit: Optional[str] = ' '
-    precision: Optional[int] = 1
-
-    def decode(self, client: "Client", payload: dict, value: Any):
-        val = as_float(value)
-        payload[self.attr] = round(val, self.precision) if val is not None else None
-
-
-@dataclass
-class ForecastMinutelySensorConv(SensorConv):
-    """分钟级降水：状态是文字描述，值序列合并为单个属性（避免 20 条属性入库）。"""
-
-    attr: str = 'forecast_minutely'
-    prop: Optional[str] = 'msg'
-    option = {
-        'icon': 'mdi:tooltip',
-    }
-    childs = {
-        'forecast_minutely_values',
-        'forecast_minutely_start',
-        'forecast_minutely_step',
-    }
-
-    def decode(self, client: "Client", payload: dict, value: Any):
-        minutely = client.data.get('minutely') or {}
-        times = minutely.get('times') or []
-        values = minutely.get('values') or []
-        payload['forecast_minutely'] = minutely.get('msg')
-        if times and values:
-            payload['forecast_minutely_start'] = times[0]
-            payload['forecast_minutely_values'] = values
-            payload['forecast_minutely_step'] = 6
 
 
 @dataclass

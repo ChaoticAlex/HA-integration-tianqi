@@ -210,3 +210,31 @@ def build_hourly_row(item: dict) -> dict | None:
     if (val := wind_bearing_to_degrees(item.get('ji'))) is not None:
         row['wind_bearing'] = val
     return row
+
+
+def build_twice_daily_rows(item: dict) -> list[dict]:
+    """上游 fa=白天码 fb=夜间码 -> 白天/夜间两条 Forecast。
+
+    注意：HA 对 twice_daily 强制要求 is_daytime，缺了会直接 ValueError。
+    fe/fg 是白天风向/风力，ff/fh 是夜间风向/风力；fc=最高温、fd=最低温。
+    """
+    rows: list[dict] = []
+    if (day := CONDITION_CODES.get(f'd{item.get("fa")}')) is not None:
+        row = {'condition': day.condition, 'is_daytime': True}
+        if (val := as_float(item.get('fc'))) is not None:
+            row['native_temperature'] = val
+        if (val := wind_bearing_to_degrees(item.get('fe'))) is not None:
+            row['wind_bearing'] = val
+        if (val := wind_force_to_kmh(item.get('fg'))) is not None:
+            row['native_wind_speed'] = val
+        rows.append(row)
+    if (night := CONDITION_CODES.get(f'd{item.get("fb")}')) is not None:
+        row = {'condition': night.condition, 'is_daytime': False}
+        if (val := as_float(item.get('fd'))) is not None:
+            row['native_temperature'] = val
+        if (val := wind_bearing_to_degrees(item.get('ff'))) is not None:
+            row['wind_bearing'] = val
+        if (val := wind_force_to_kmh(item.get('fh'))) is not None:
+            row['native_wind_speed'] = val
+        rows.append(row)
+    return rows
