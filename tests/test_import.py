@@ -11,7 +11,8 @@ import types
 import unittest
 from pathlib import Path
 
-INTEGRATION_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[1]
+INTEGRATION_ROOT = REPO_ROOT
 
 
 def _mod(name, **attrs):
@@ -186,6 +187,27 @@ class TestImport(unittest.TestCase):
         from custom_components.tianqi.config_flow import TianqiConfigFlow
 
         self.assertEqual(TianqiConfigFlow.domain, DOMAIN)
+
+    def test_tls_verification_policy(self):
+        """只有 mpf 节点豁免证书校验（其证书已过期），其余必须校验。"""
+        from custom_components.tianqi import verify_ssl_for
+
+        self.assertFalse(verify_ssl_for('https://mpf.weather.com.cn/mpf_v3/webgis/minute'))
+        for url in (
+            'https://d1.weather.com.cn/weather_index/101280101.html',
+            'https://d7.weather.com.cn/geong/v1/api',
+            'https://toy1.weather.com.cn/search',
+            'https://www.weather.com.cn/weather/101280101.shtml',
+        ):
+            self.assertTrue(verify_ssl_for(url), url)
+
+    def test_no_blind_verify_off(self):
+        """不允许出现无条件的 verify_ssl=False。"""
+        src = (REPO_ROOT / 'custom_components' / 'tianqi' / '__init__.py').read_text(encoding='utf-8')
+        code = '\n'.join(
+            line for line in src.splitlines() if not line.strip().startswith('#')
+        )
+        self.assertNotIn('verify_ssl=False', code)
 
     def test_converters_registered(self):
         convs = ['AlarmsBinarySensorConv', 'LivingIndexSensorConv']

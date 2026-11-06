@@ -4,6 +4,7 @@ import asyncio
 import time
 import json
 import base64
+from urllib.parse import urlparse
 import voluptuous as vol
 
 from datetime import datetime, timedelta
@@ -162,6 +163,17 @@ async def async_add_setuper(hass: HomeAssistant, config, domain, setuper):
             await client.setup_entities(domain)
 
 
+# 仅 mpf 节点需要跳过证书校验：其证书 2026-09-28 已过期，其余节点证书正常
+# （d1/toy1/m 至 2027-02-04，d7/www 至 2026-12-08，均为 *.weather.com.cn）。
+NO_VERIFY_HOSTS = ('mpf.weather.com.cn',)
+
+
+def verify_ssl_for(url: str) -> bool:
+    """按目标主机决定是否校验 TLS 证书。"""
+    host = (urlparse(url).hostname or '').lower()
+    return host not in NO_VERIFY_HOSTS
+
+
 def aiohttp_retry(
     max_retries: int = 10,
     backoff_factor: float = 2.0,
@@ -186,7 +198,15 @@ def aiohttp_retry(
                 try:
                     return await func(*args, **kwargs)
                 except exceptions as exc:
-                    _LOGGER.warning("Error while fetching data from %s", func.__name__, exc_info=True)
+                    if isinstance(exc, aiohttp.ClientConnectorCertificateError):
+                        _LOGGER.error(
+                            "TLS 校验失败，上游证书可能已过期（%s）。"
+                            "若是 weather.com.cn 忘记续期，请到项目 issue 反馈；"
+                            "mpf 节点已按 NO_VERIFY_HOSTS 豁免。",
+                            exc,
+                        )
+                    else:
+                        _LOGGER.warning("Error while fetching data from %s", func.__name__, exc_info=True)
                     last_exception = exc
                     if attempt == max_retries:
                         break
@@ -229,8 +249,7 @@ class TianqiClient:
             'Referer': HTTP_REFERER,
             'User-Agent': USER_AGENT,
         }
-        # 注：mpf.weather.com.cn 证书已过期（notAfter=2026-09-28），
-        # 故对这些节点 verify_ssl=False；上游修好证书后应改回 True。
+        # TLS 校验策略见 verify_ssl_for()：只有 mpf 节点豁免（证书已过期）。
 
         self.coordinators = [
             DataUpdateCoordinator(
@@ -439,7 +458,7 @@ class TianqiClient:
 
         res = await self.http.get(api, params={
             'params': json.dumps(pms, separators=(',', ':')),
-        }, allow_redirects=False, verify_ssl=False)
+        }, allow_redirects=False, verify_ssl=verify_ssl_for(api))
         txt = await res.text()
         if not txt:
             _LOGGER.error('%s: %s', api, [pms, txt, res.headers])
@@ -458,7 +477,7 @@ class TianqiClient:
     async def search_areas(self, name):
         api = self.api_url('search', node='toy1')
         pms = {'cityname': name}
-        res = await self.http.get(api, params=pms, allow_redirects=False, verify_ssl=False)
+        res = await self.http.get(api, params=pms, allow_redirects=False, verify_ssl=verify_ssl_for(api))
         txt = await res.text()
         if not txt:
             raise IntegrationError(f'Empty response from: {api} {pms}')
@@ -501,7 +520,7 @@ class TianqiClient:
     @aiohttp_retry()
     async def update_summary(self, **kwargs):
         api = self.api_url('weather_index/%s.html' % kwargs.get('area_id', self.area_id))
-        res = await self.http.get(api, allow_redirects=False, verify_ssl=False)
+        res = await self.http.get(api, allow_redirects=False, verify_ssl=verify_ssl_for(api))
         txt = await res.text()
         if not txt:
             raise IntegrationError(f'Empty response from: {api}')
@@ -522,7 +541,7 @@ class TianqiClient:
     @aiohttp_retry()
     async def update_alarms(self, **kwargs):
         api = self.api_url('dingzhi/%s.html' % kwargs.get('area_id', self.area_id))
-        res = await self.http.get(api, allow_redirects=False, verify_ssl=False)
+        res = await self.http.get(api, allow_redirects=False, verify_ssl=verify_ssl_for(api))
         txt = await res.text()
         if not txt:
             raise IntegrationError(f'Empty response from: {api}')
@@ -540,7 +559,7 @@ class TianqiClient:
     @aiohttp_retry()
     async def update_dailies(self, **kwargs):
         api = self.api_url('weixinfc/%s.html' % kwargs.get('area_id', self.area_id))
-        res = await self.http.get(api, allow_redirects=False, verify_ssl=False)
+        res = await self.http.get(api, allow_redirects=False, verify_ssl=verify_ssl_for(api))
         txt = await res.text()
         if not txt:
             raise IntegrationError(f'Empty response from: {api}')
@@ -557,7 +576,7 @@ class TianqiClient:
     @aiohttp_retry()
     async def update_hourlies(self, **kwargs):
         api = self.api_url('wap_180h/%s.html' % kwargs.get('area_id', self.area_id))
-        res = await self.http.get(api, allow_redirects=False, verify_ssl=False)
+        res = await self.http.get(api, allow_redirects=False, verify_ssl=verify_ssl_for(api))
         txt = await res.text()
         if not txt:
             raise IntegrationError(f'Empty response from: {api}')
@@ -578,7 +597,7 @@ class TianqiClient:
             'lat': self.station.latitude,
             'lon': self.station.longitude,
         }
-        res = await self.http.get(api, params=pms, allow_redirects=False, verify_ssl=False)
+        res = await self.http.get(api, params=pms, allow_redirects=False, verify_ssl=verify_ssl_for(api))
         txt = await res.text()
         if not txt:
             raise IntegrationError(f'Empty response from: {api} {pms}')
@@ -596,7 +615,7 @@ class TianqiClient:
     @aiohttp_retry()
     async def update_observe(self, **kwargs):
         api = self.api_url('weather/%s.shtml' % kwargs.get('area_id', self.area_id), 'www')
-        res = await self.http.get(api, allow_redirects=False, verify_ssl=False)
+        res = await self.http.get(api, allow_redirects=False, verify_ssl=verify_ssl_for(api))
         txt = await res.text()
 
         fmt = '%Y%m%d%H%M'
