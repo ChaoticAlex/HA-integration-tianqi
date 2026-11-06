@@ -10,7 +10,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/hasscc/tianqi/issues",
   "requirements": [],
-  "version": "1.0.1",
+  "version": "1.0.2",
   "integration_type": "service",
   "loggers": [
     "custom_components.tianqi"

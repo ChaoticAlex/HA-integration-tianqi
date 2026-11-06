@@ -30,20 +30,23 @@
   },
   "entity": {
     "sensor": {
-      "temperature": {"name": "气温"},
-      "humidity": {"name": "相对湿度"},
-      "atmospheric_pressure": {"name": "气压"},
-      "visibility": {"name": "能见度"},
-      "precipitation": {"name": "降水量(1小时)"},
-      "precipitation_24h": {"name": "降水量24h"},
-      "pm25": {"name": "PM2.5"},
-      "wind_speed": {"name": "风速"},
-      "wind_bearing": {"name": "风向"},
-      "wind_force": {"name": "风力等级"},
-      "forecast_minutely": {"name": "分钟级降水"}
+      "precipitation": {
+        "name": "降水量(1小时)"
+      },
+      "precipitation_24h": {
+        "name": "降水量24h"
+      },
+      "aqi": {
+        "name": "空气质量指数(AQI)"
+      },
+      "forecast_minutely": {
+        "name": "分钟级降水"
+      }
     },
     "binary_sensor": {
-      "warning": {"name": "气象预警"}
+      "warning": {
+        "name": "气象预警"
+      }
     }
   }
 }

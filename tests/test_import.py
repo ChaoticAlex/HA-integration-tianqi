@@ -169,22 +169,44 @@ class TestImport(unittest.TestCase):
         self.assertEqual(TianqiConfigFlow.domain, DOMAIN)
 
     def test_converters_registered(self):
-        from custom_components.tianqi import TianqiClient
-
-        class _Hass:
-            data = {}
-
-        # 只验证转换器定义能构造出来（不触发网络）
-        convs = [
-            'WindSpeedSensorConv', 'WindBearingSensorConv',
-            'WindForceSensorConv', 'AlarmsBinarySensorConv',
-            'ForecastMinutelySensorConv',
-        ]
+        convs = ['AlarmsBinarySensorConv', 'ForecastMinutelySensorConv']
         mod = __import__('custom_components.tianqi.converters.base', fromlist=convs)
         for name in convs:
             conv = getattr(mod, name)()
             self.assertTrue(conv.attr, name)
             self.assertIn(conv.domain, ('sensor', 'binary_sensor'), name)
+
+    def test_minutely_attributes_compacted(self):
+        """分钟级降水不得把每个时间戳都写成一条属性。"""
+        from custom_components.tianqi.converters.base import ForecastMinutelySensorConv
+
+        class _Client:
+            data = {
+                'minutely': {
+                    'msg': '未来2小时不会下雨',
+                    'times': ['2026-11-06 10:42:00', '2026-11-06 10:48:00'],
+                    'values': [0.0, 0.3],
+                }
+            }
+
+        payload = {}
+        conv = ForecastMinutelySensorConv()
+        conv.decode(_Client(), payload, '未来2小时不会下雨')
+        self.assertEqual(
+            set(payload),
+            {'forecast_minutely', 'forecast_minutely_start',
+             'forecast_minutely_values', 'forecast_minutely_step'},
+        )
+        self.assertEqual(payload['forecast_minutely_values'], [0.0, 0.3])
+        self.assertEqual(len(payload), 4)  # 不是每个时间戳一条
+
+    def test_no_duplicate_entity_converters(self):
+        """温度/湿度/气压/能见度/风速/风向已在 weather 实体属性里，不得再建实体。"""
+        mod = __import__('custom_components.tianqi.converters.base', fromlist=['x'])
+        for dead in (
+            'WindSpeedSensorConv', 'WindBearingSensorConv', 'WindForceSensorConv',
+        ):
+            self.assertFalse(hasattr(mod, dead), dead)
 
 
 if __name__ == '__main__':

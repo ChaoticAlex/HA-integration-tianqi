@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, TYPE_CHECKING
 import re
 
-from ..const import as_float, wind_bearing_to_degrees, wind_force_to_kmh
+from ..const import as_float
 
 if TYPE_CHECKING:
     from .. import TianqiClient as Client
@@ -55,78 +55,29 @@ class NumberSensorConv(SensorConv):
 
 
 @dataclass
-class WindSpeedSensorConv(NumberSensorConv):
-    """风速传感器，HA 标准 wind_speed + km/h。"""
-
-    attr: str = 'wind_speed'
-    prop: Optional[str] = 'wse'
-    unit: Optional[str] = 'km/h'
-    option = {
-        'device_class': 'wind_speed',
-        'state_class': 'measurement',
-        'unit_of_measurement': 'km/h',
-    }
-
-
-@dataclass
-class WindBearingSensorConv(Converter):
-    """风向传感器，HA 标准 wind_direction + 度（0=北，顺时针），文本进属性。"""
-
-    attr: str = 'wind_bearing'
-    prop: Optional[str] = 'WD'
-    domain: Optional[str] = 'sensor'
-    option = {
-        'device_class': 'wind_direction',
-        'state_class': 'measurement_angle',
-        'unit_of_measurement': '°',
-        'icon': 'mdi:compass-outline',
-    }
-
-    def decode(self, client: "Client", payload: dict, value: Any):
-        dataSK = client.data.get('dataSK') or {}
-        text = value or dataSK.get('wde')
-        payload[self.attr] = wind_bearing_to_degrees(text)
-        payload['wind_bearing_text'] = dataSK.get('WD') or dataSK.get('wde')
-
-
-@dataclass
-class WindForceSensorConv(Converter):
-    """蒲福风级（上游 "2级"），无标准 device_class，默认不启用。"""
-
-    attr: str = 'wind_force'
-    prop: Optional[str] = 'WS'
-    domain: Optional[str] = 'sensor'
-    enabled: Optional[bool] = False
-    option = {
-        'state_class': 'measurement',
-        'unit_of_measurement': '级',
-        'icon': 'mdi:weather-windy',
-    }
-
-    def decode(self, client: "Client", payload: dict, value: Any):
-        text = f'{value or ""}'
-        match = re.search(r'\d+(?:\.\d+)?', text)
-        payload[self.attr] = float(match.group(0)) if match else None
-
-
-@dataclass
 class ForecastMinutelySensorConv(SensorConv):
+    """分钟级降水：状态是文字描述，值序列合并为单个属性（避免 20 条属性入库）。"""
+
     attr: str = 'forecast_minutely'
     prop: Optional[str] = 'msg'
     option = {
         'icon': 'mdi:tooltip',
-        'payload_attrs': True,
+    }
+    childs = {
+        'forecast_minutely_values',
+        'forecast_minutely_start',
+        'forecast_minutely_step',
     }
 
     def decode(self, client: "Client", payload: dict, value: Any):
         minutely = client.data.get('minutely') or {}
-        times = minutely.get('times', [])
-        values = minutely.get('values', [])
-        minutes = dict(zip(times, values)) if len(times) == len(values) else {}
-        payload.update({
-            'forecast_minutely': minutely.get('msg'),
-            **minutes,
-        })
+        times = minutely.get('times') or []
+        values = minutely.get('values') or []
+        payload['forecast_minutely'] = minutely.get('msg')
+        if times and values:
+            payload['forecast_minutely_start'] = times[0]
+            payload['forecast_minutely_values'] = values
+            payload['forecast_minutely_step'] = 6
 
 
 @dataclass

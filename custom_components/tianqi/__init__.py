@@ -284,6 +284,8 @@ class TianqiClient:
         self._remove_listeners = []
 
         self.converters = {}
+        # 只保留 weather 实体状态属性里拿不到的数据（非必要不增实体）：
+        # 温度/湿度/气压/能见度/风速/风向 已在 weather 实体属性中，不重复建传感器。
         self.add_converters(
             NumberSensorConv('precipitation', prop='rain').with_option({
                 'device_class': 'precipitation',
@@ -295,36 +297,13 @@ class TianqiClient:
                 'state_class': 'measurement',
                 'unit_of_measurement': UnitOfLength.MILLIMETERS,
             }),
-            NumberSensorConv('temperature', prop='temp').with_option({
-                'device_class': 'temperature',
+            # 上游 aqi_pm25 实测与 aqi 完全同值，是空气质量指数而非 PM2.5 浓度
+            NumberSensorConv('aqi', prop='aqi').with_option({
+                'device_class': 'aqi',
                 'state_class': 'measurement',
-                'unit_of_measurement': UnitOfTemperature.CELSIUS,
             }),
-            NumberSensorConv('humidity', prop='sd', unit='%').with_option({
-                'device_class': 'humidity',
-                'state_class': 'measurement',
-                'unit_of_measurement': PERCENTAGE,
-            }),
-            NumberSensorConv('pm25', prop='aqi_pm25').with_option({
-                'device_class': 'pm25',
-                'state_class': 'measurement',
-                'unit_of_measurement': CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-            }),
-            NumberSensorConv('atmospheric_pressure', prop='qy').with_option({
-                'device_class': 'atmospheric_pressure',
-                'state_class': 'measurement',
-                'unit_of_measurement': UnitOfPressure.HPA,
-            }),
-            NumberSensorConv('visibility', prop='njd', unit='km').with_option({
-                'device_class': 'distance',
-                'state_class': 'measurement',
-                'unit_of_measurement': UnitOfLength.KILOMETERS,
-            }),
-            WindSpeedSensorConv(),
-            WindBearingSensorConv(),
-            WindForceSensorConv(),
-            AlarmsBinarySensorConv(),
             ForecastMinutelySensorConv(),
+            AlarmsBinarySensorConv(),
         )
 
     @staticmethod

@@ -72,7 +72,8 @@ class WeatherEntity(BaseEntity):
         self.hass = client.hass
 
         self.entity_id = f'{ENTITY_DOMAIN}.{client.station_code}'
-        self._attr_name = client.station_name
+        # 设备名已是「<站>天气」，实体名留空由设备名派生，避免「江南天气 江南」
+        self._attr_name = None
         self._attr_unique_id = f'{client.entry_id}-{ENTITY_DOMAIN}'
         self._attr_native_temperature_unit = UnitOfTemperature.CELSIUS
         self._attr_native_pressure_unit = UnitOfPressure.HPA

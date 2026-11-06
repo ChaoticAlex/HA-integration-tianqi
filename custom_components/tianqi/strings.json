@@ -30,20 +30,23 @@
   },
   "entity": {
     "sensor": {
-      "temperature": {"name": "Temperature"},
-      "humidity": {"name": "Humidity"},
-      "atmospheric_pressure": {"name": "Pressure"},
-      "visibility": {"name": "Visibility"},
-      "precipitation": {"name": "Precipitation (1h)"},
-      "precipitation_24h": {"name": "Precipitation (24h)"},
-      "pm25": {"name": "PM2.5"},
-      "wind_speed": {"name": "Wind speed"},
-      "wind_bearing": {"name": "Wind direction"},
-      "wind_force": {"name": "Wind force"},
-      "forecast_minutely": {"name": "Minutely forecast"}
+      "precipitation": {
+        "name": "Precipitation (1h)"
+      },
+      "precipitation_24h": {
+        "name": "Precipitation (24h)"
+      },
+      "aqi": {
+        "name": "AQI"
+      },
+      "forecast_minutely": {
+        "name": "Minutely forecast"
+      }
     },
     "binary_sensor": {
-      "warning": {"name": "Weather warning"}
+      "warning": {
+        "name": "Weather warning"
+      }
     }
   }
 }

@@ -8,17 +8,20 @@ Home Assistant 自定义集成，用 `weather` 实体提供中国天气网的实
 
 ## 实体
 
+**一设备 6 个实体**，只保留 `weather` 实体状态属性里拿不到的数据（非必要不增实体）。
+
 | 实体 | 说明 |
 |---|---|
-| `weather.<站>` | condition / 温度 / 湿度 / 气压 / 风速 / **风向(°) ** / 能见度；日预报 15 天 + 逐时预报 48 小时 |
-| `sensor.<站>_wind_bearing` | `device_class: wind_direction`，单位 `°`，0=北 顺时针 |
-| `sensor.<站>_wind_speed` | `device_class: wind_speed`，km/h |
-| `sensor.<站>_wind_force` | 蒲福风级（默认不启用） |
-| `sensor.<站>_temperature` / `_humidity` / `_atmospheric_pressure` / `_visibility` | 实况 |
-| `sensor.<站>_precipitation` / `_precipitation_24h` | 1h / 24h 降水量，mm |
-| `sensor.<站>_pm25` | PM2.5 |
-| `sensor.<站>_forecast_minutely` | 分钟级降水描述 + 未来 2 小时逐 6 分钟值（属性） |
+| `weather.<站>` | 实况 + 日预报 15 天 + 逐时 48 小时。状态属性含 temperature / humidity / pressure / wind_bearing(°) / wind_speed / visibility / 30 项生活指数 |
+| `sensor.<站>_precipitation` | 1 小时降水量，mm |
+| `sensor.<站>_precipitation_24h` | 24 小时降水量，mm |
+| `sensor.<站>_aqi` | 空气质量指数（`device_class: aqi`，无单位） |
+| `sensor.<站>_forecast_minutely` | 分钟级降水描述，属性含未来 2 小时逐 6 分钟值 |
 | `binary_sensor.<站>_warning` | `device_class: problem`，预警状态 + `alarms` 明细 |
+
+已删除（数据与 `weather` 实体重复）：`temperature` / `humidity` / `atmospheric_pressure` /
+`visibility` / `wind_speed` / `wind_bearing` / `wind_force` / `limit_number`。
+需要在自动化里单独引用时，用 `state_attr('weather.<站>', 'wind_bearing')` 取值。
 
 ## 安装
 

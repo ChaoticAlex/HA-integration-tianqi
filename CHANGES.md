@@ -1,5 +1,18 @@
 # 改造记录（严格 HA 标准版）
 
+## 1.0.2 — 实体瘦身（非必要不增实体）
+
+| 变更 | 说明 |
+|---|---|
+| 删除 7 个传感器 | `temperature` / `humidity` / `atmospheric_pressure` / `visibility` / `wind_speed` / `wind_bearing` / `wind_force` —— 数据已在 `weather` 实体状态属性里 |
+| `pm25` → `aqi` | 实测 5 城 `aqi_pm25` 与 `aqi` 完全同值，是 AQI 指数而非 PM2.5 浓度；改 `device_class: aqi`、去单位 |
+| `forecast_minutely` 属性压缩 | 从「每个时间戳一条属性（20 条）」改为 `forecast_minutely_values` + `forecast_minutely_start` + `forecast_minutely_step` |
+| `weather` 实体名 | `_attr_name = None`，修掉「江南天气 江南」重复命名 |
+| 实体总数 | 13 → **6**（weather 1 + sensor 4 + binary_sensor 1） |
+
+受影响的自动化：`sensor.<站>_pm25`、`sensor.<站>_temperature` 等实体 ID 不再存在，
+改用 `state_attr('weather.<站>', 'temperature')` 或对应的 `weather` 属性。
+
 ## 1.0.1 — 修复"无法加载配置向导 / Invalid handler specified"
 
 - `converters/base.py` 的相对导入写错：`from .const import` → `from ..const import`。
