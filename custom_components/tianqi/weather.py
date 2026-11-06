@@ -122,15 +122,7 @@ class WeatherEntity(BaseEntity):
             # 原始风向文本（"无持续风向" 时 wind_bearing 为 None，文本仍保留）
             attrs['wind_bearing_text'] = dataSK.get('WD')
 
-        dataZS = dat.get('dataZS') or {}
-        indexes = {
-            v: dataZS[f'{k[:-5]}_des_s']
-            for k, v in dataZS.items()
-            if k.endswith('_name') and dataZS.get(f'{k[:-5]}_des_s')
-        }
-        if indexes:
-            attrs['indexes'] = indexes
-
+        # 生活指数已搬到 sensor.<站>_living_index（状态可直接喂 Assist）
         # 以下数据 HA weather 域没有对应字段：作为属性而非独立实体
         if (val := as_float(dataSK.get('rain'))) is not None:
             attrs['precipitation_1h'] = val

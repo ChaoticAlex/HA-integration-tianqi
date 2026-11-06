@@ -146,7 +146,7 @@ class TestWeatherEntity(unittest.TestCase):
         self.assertEqual(attrs['forecast_minutely'], '未来2小时不会下雨')
         self.assertEqual(attrs['forecast_minutely_values'], [0.0, 0.3])
         self.assertEqual(attrs['forecast_minutely_start'], '2026-11-06 11:36:00')
-        self.assertIn('穿衣指数', attrs['indexes'])
+        self.assertNotIn('indexes', attrs)  # 已搬到 sensor.<站>_living_index
 
     def test_daily_filters_past(self):
         rows = asyncio.run(self._entity().async_forecast_daily())

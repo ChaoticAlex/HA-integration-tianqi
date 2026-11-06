@@ -31,6 +31,7 @@ _LOGGER = logging.getLogger(__name__)
 
 SUPPORTED_PLATFORMS = [
     Platform.WEATHER,
+    Platform.SENSOR,
     Platform.BINARY_SENSOR,
 ]
 HTTP_REFERER = base64.b64decode('aHR0cHM6Ly9tLndlYXRoZXIuY29tLmNuLw==').decode()
@@ -281,6 +282,7 @@ class TianqiClient:
         # 方案 B：只保留 weather 实体 + 预警 binary_sensor。
         # 雨量/AQI/分钟级降水/生活指数都进 weather 实体的状态属性，不另建实体。
         self.add_converters(
+            LivingIndexSensorConv(),
             AlarmsBinarySensorConv(),
         )
 

@@ -139,3 +139,62 @@ class TestConditionTable(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+
+
+class TestLivingIndex(unittest.TestCase):
+    """生活指数摘要：状态串必须 ≤255 字符（HA 硬限制）。"""
+
+    DATA_ZS = {
+        'date': '2026110611',
+        'ct_name': '穿衣指数', 'ct_hint': '舒适', 'ct_des_s': '建议穿长袖衬衫单裤等服装。',
+        'yr_name': '雨伞指数', 'yr_hint': '不带伞', 'yr_des_s': '天气较好，不用带雨伞。',
+        'gm_name': '感冒指数', 'gm_hint': '较易发', 'gm_des_s': '天凉，湿度大，较易感冒。',
+        'pj_name': '啤酒指数', 'pj_hint': '适宜', 'pj_des_s': '可适量饮用啤酒。',
+        'fh_name': '放风筝指数', 'fh_hint': '较适宜', 'fh_des_s': '温暖舒适，较适宜放风筝。',
+        'no_hint_name': '某指数', 'no_hint_des_s': '只有长句没有短标签。',
+    }
+
+    def test_state_within_limit(self):
+        from const import STATE_LIMIT, build_living_index
+
+        result = build_living_index(self.DATA_ZS)
+        self.assertLessEqual(len(result['state']), STATE_LIMIT)
+
+    def test_priority_order(self):
+        from const import build_living_index
+
+        state = build_living_index(self.DATA_ZS)['state']
+        self.assertTrue(state.startswith('穿衣:舒适;雨伞:不带伞;感冒:较易发'))
+        # 低优先级排在后面
+        self.assertLess(state.index('感冒'), state.index('啤酒'))
+
+    def test_long_sentences_only_whitelisted(self):
+        from const import build_living_index
+
+        result = build_living_index(self.DATA_ZS)
+        self.assertIn('穿衣', result['indexes'])
+        self.assertNotIn('啤酒', result['indexes'])
+        # 短标签全留
+        self.assertIn('啤酒', result['indexes_short'])
+        self.assertEqual(result['indexes_date'], '2026110611')
+
+    def test_truncation_drops_from_tail(self):
+        from const import build_living_index
+
+        result = build_living_index(self.DATA_ZS, limit=20)
+        self.assertLessEqual(len(result['state']), 20)
+        self.assertTrue(result['state'].startswith('穿衣'))
+        self.assertNotIn('放风筝', result['state'])
+
+    def test_missing_hint_uses_dash(self):
+        from const import build_living_index
+
+        result = build_living_index(self.DATA_ZS)
+        self.assertIn('某:-', result['state'])  # 名字去掉「指数」后缀
+
+    def test_empty_input(self):
+        from const import build_living_index
+
+        result = build_living_index({})
+        self.assertEqual(result['state'], '')
+        self.assertEqual(result['indexes'], {})

@@ -172,6 +172,7 @@ class TestImport(unittest.TestCase):
     def test_submodules_import(self):
         for name in (
             'custom_components.tianqi.weather',
+            'custom_components.tianqi.sensor',
             'custom_components.tianqi.binary_sensor',
             'custom_components.tianqi.config_flow',
             'custom_components.tianqi.converters.base',
@@ -187,7 +188,7 @@ class TestImport(unittest.TestCase):
         self.assertEqual(TianqiConfigFlow.domain, DOMAIN)
 
     def test_converters_registered(self):
-        convs = ['AlarmsBinarySensorConv']
+        convs = ['AlarmsBinarySensorConv', 'LivingIndexSensorConv']
         mod = __import__('custom_components.tianqi.converters.base', fromlist=convs)
         for name in convs:
             conv = getattr(mod, name)()

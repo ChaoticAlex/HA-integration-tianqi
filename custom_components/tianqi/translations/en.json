@@ -33,6 +33,11 @@
       "warning": {
         "name": "Weather warning"
       }
+    },
+    "sensor": {
+      "living_index": {
+        "name": "Living index"
+      }
     }
   }
 }

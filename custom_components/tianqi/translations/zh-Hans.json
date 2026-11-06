@@ -33,6 +33,11 @@
       "warning": {
         "name": "气象预警"
       }
+    },
+    "sensor": {
+      "living_index": {
+        "name": "生活指数"
+      }
     }
   }
 }

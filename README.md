@@ -8,22 +8,26 @@ Home Assistant 自定义集成，用 `weather` 实体提供中国天气网的实
 
 ## 实体
 
-**一设备 2 个实体**，与 HA 内置天气集成（`xiaomi_weather` / `open_meteo` / `met`）保持同构：
-天气数据只通过 `weather` 实体交付，其余信息进状态属性。
+一设备 3 个实体。天气数据走 `weather`，生活指数单独一个传感器（**状态即摘要，可直接喂给 Assist/LLM，不需要 template**）。
 
 | 实体 | 说明 |
 |---|---|
-| `weather.<站>` | 实况 + 日预报 15 天 + 逐时 48 小时 + **白天/夜间（twice daily）** |
-| `binary_sensor.<站>_warning` | `device_class: problem`，预警状态 + `alarms` 明细（供自动化 `state` 触发） |
+| `weather.<站>` | 实况 + 日预报 15 天 + 逐时 48 小时 + 白天/夜间（twice daily） |
+| `sensor.<站>_living_index` | 生活指数。**状态**是 `穿衣:舒适;雨伞:不带伞;…`（30 条短标签，实测 205 字符，上限 255）；属性 `indexes` 是 11 条重点长句、`indexes_short` 是全部 30 条短标签 |
+| `binary_sensor.<站>_warning` | `device_class: problem`，预警状态 + `alarms` 明细 |
 
 `weather` 实体状态属性：
 
 - 标准：`temperature` / `humidity` / `pressure` / `wind_bearing`(度) / `wind_speed` / `visibility`
-- 该集成补充：`precipitation_1h` / `precipitation_24h` / `aqi` / `forecast_minutely` +
-  `forecast_minutely_values` / `forecast_minutely_start` / `indexes`（生活指数）/ `condition_text`
+- 补充：`precipitation_1h` / `precipitation_24h` / `aqi` / `forecast_minutely` +
+  `forecast_minutely_values` / `forecast_minutely_start` / `condition_text`
 
-> 这些补充值只作为属性提供：可用于模板与自动化，但**不进长期统计（statistics）**。
-> 需要历史曲线时，可用 `template: sensor` 自行派生，或从上游页面取。
+### 为什么生活指数单独一个实体
+
+HA 的 Assist/LLM 只会看到实体**状态**，看不到 `extra_state_attributes`。所以把 30 条指数
+放在 `weather` 属性里，语音助手根本读不到；做成一个状态串就能直接播报，省掉 template。
+
+> 补充值只作属性提供：可用于模板与自动化，但**不进长期统计（statistics）**。
 
 ## 安装
 

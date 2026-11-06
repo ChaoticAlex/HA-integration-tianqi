@@ -238,3 +238,61 @@ def build_twice_daily_rows(item: dict) -> list[dict]:
             row['native_wind_speed'] = val
         rows.append(row)
     return rows
+
+
+# --- 生活指数 -------------------------------------------------------------
+# 上游 dataZS 是 "名字 + _hint 短标签 + _des_s 人话长句" 三段式，共 30 条。
+# HA 状态字符串上限 255 字符（MAX_LENGTH_STATE_STATE），实测 30 条短标签拼接
+# 只有 205 字符，因此整个摘要可以直接做成一个传感器状态喂给 Assist/LLM，
+# 不需要写 template，也不需要把长句塞进属性。
+
+# 优先级：决定截断时先丢谁，也决定播报顺序（越靠前越贴近真实决策）
+LIVING_INDEX_PRIORITY: tuple[str, ...] = (
+    '穿衣', '雨伞', '晾晒', '洗车', '感冒', '运动', '紫外线强度', '中暑',
+    '空调开启', '过敏', '空气污染扩散条件',
+    '舒适度', '路况', '交通', '旅游', '晨练', '钓鱼',
+    '太阳镜', '防晒', '干燥', '风寒', '心情', '夜生活', '逛街', '约会',
+    '美发', '化妆', '啤酒', '划船', '放风筝',
+)
+
+# 长句只保留真正影响行为的这些，其余只给短标签
+LIVING_INDEX_LONG: frozenset[str] = frozenset(LIVING_INDEX_PRIORITY[:11])
+
+STATE_LIMIT = 255
+
+
+def build_living_index(dataZS: dict, limit: int = STATE_LIMIT) -> dict:
+    """dataZS -> {state, indexes, indexes_short, date}。
+
+    state 是 "穿衣:舒适;雨伞:不带伞;…"，按优先级拼接并在超限时从尾部丢弃；
+    长句只输出白名单里的条目，短标签输出全部。
+    """
+    pairs: list[tuple[str, str, str]] = []  # (名字, hint, 长句)
+    for key, name in dataZS.items():
+        if not key.endswith('_name') or not isinstance(name, str):
+            continue
+        base = key[:-5]
+        label = name.removesuffix('指数')
+        hint = dataZS.get(f'{base}_hint') or ''
+        desc = dataZS.get(f'{base}_des_s') or ''
+        if not (hint or desc):
+            continue
+        pairs.append((label, hint, desc))
+
+    order = {name: idx for idx, name in enumerate(LIVING_INDEX_PRIORITY)}
+    pairs.sort(key=lambda item: order.get(item[0], len(LIVING_INDEX_PRIORITY)))
+
+    # 拼状态，超长从尾部丢
+    kept: list[str] = []
+    for label, hint, _ in pairs:
+        candidate = ';'.join(kept + [f'{label}:{hint or "-"}'])
+        if len(candidate) > limit:
+            break
+        kept.append(f'{label}:{hint or "-"}')
+
+    return {
+        'state': ';'.join(kept),
+        'indexes': {label: desc for label, _, desc in pairs if label in LIVING_INDEX_LONG and desc},
+        'indexes_short': {label: hint for label, hint, _ in pairs if hint},
+        'indexes_date': dataZS.get('date'),
+    }

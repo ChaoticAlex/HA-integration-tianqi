@@ -1,5 +1,21 @@
 # 改造记录（严格 HA 标准版）
 
+## 1.0.4 — 生活指数独立成实体（供 Assist 直接播报）
+
+背景：HA 状态字符串上限 255 字符（`MAX_LENGTH_STATE_STATE`），实测 30 条短标签拼接仅 205 字符；
+而 Assist/LLM 只读实体 `state`，不读 `extra_state_attributes`。
+
+| 变更 | 说明 |
+|---|---|
+| 新增 `sensor.<站>_living_index` | 状态 = `穿衣:舒适;雨伞:不带伞;…`（按优先级拼接，超 255 从尾部丢弃） |
+| 属性 `indexes` | 只留 11 条重点长句（穿衣/雨伞/晾晒/洗车/感冒/运动/紫外线/中暑/空调/过敏/空气扩散） |
+| 属性 `indexes_short` | 全部 30 条短标签 |
+| `weather` 实体 | 移除 `indexes` 属性（搬到上述传感器） |
+| 实体数 | 2 → **3** |
+
+省掉 template：把该传感器 expose 给 Assist 即可，LLM 直接看到 30 条指数摘要（约 205 字符 ≈ 130 token），
+比让 LLM 从原始气象数据现编（约 800-1000 token + 2-10s 延迟 + 判断漂移）便宜一个数量级。
+
 ## 1.0.3 — 方案 B：2 个实体 + twice daily
 
 对齐 HA 内置天气集成的取舍（`xiaomi_weather` / `open_meteo` / `met` 都只有 1 个 weather 实体、

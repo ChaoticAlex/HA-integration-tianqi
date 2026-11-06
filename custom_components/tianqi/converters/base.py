@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Any, Optional, TYPE_CHECKING
 import re
 
+from ..const import build_living_index
+
 
 if TYPE_CHECKING:
     from .. import TianqiClient as Client
@@ -79,3 +81,31 @@ class AlarmsBinarySensorConv(Converter):
         payload['warning'] = len(alarms) > 0
         payload['title'] = ', '.join(dict.fromkeys(titles))
         payload['alarms'] = alarms
+
+
+@dataclass
+class LivingIndexSensorConv(Converter):
+    """生活指数：状态是「穿衣:舒适;雨伞:不带伞;…」，长句放属性。
+
+    状态串 ≤255 字符（HA 硬限制），实测 30 条短标签共 205 字符，
+    因此可直接把整个摘要喂给 Assist/LLM，无需 template。
+    """
+
+    attr: str = 'living_index'
+    prop: Optional[str] = 'dataZS'
+    domain: Optional[str] = 'sensor'
+    option = {
+        'icon': 'mdi:clipboard-list-outline',
+    }
+    childs = {
+        'indexes',
+        'indexes_short',
+        'indexes_date',
+    }
+
+    def decode(self, client: "Client", payload: dict, value: Any):
+        data = build_living_index(value or {})
+        payload['living_index'] = data['state']
+        payload['indexes'] = data['indexes']
+        payload['indexes_short'] = data['indexes_short']
+        payload['indexes_date'] = data['indexes_date']
