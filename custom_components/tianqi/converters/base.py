@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, TYPE_CHECKING
 import re
 
-from .const import as_float, wind_bearing_to_degrees, wind_force_to_kmh
+from ..const import as_float, wind_bearing_to_degrees, wind_force_to_kmh
 
 if TYPE_CHECKING:
     from .. import TianqiClient as Client

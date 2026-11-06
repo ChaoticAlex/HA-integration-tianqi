@@ -1,5 +1,13 @@
 # 改造记录（严格 HA 标准版）
 
+## 1.0.1 — 修复"无法加载配置向导 / Invalid handler specified"
+
+- `converters/base.py` 的相对导入写错：`from .const import` → `from ..const import`。
+  该错误让整个包 import 失败，HA 因此注册不到 config_flow。
+- 新增 `tests/test_import.py`：用最小 homeassistant 桩模块把 `__init__ / weather / sensor /
+  binary_sensor / config_flow / converters` 全量 import 一遍，专拦这类"导入即崩"的问题。
+  （本轮测试数 20 → 24）
+
 分支 `dev`，基线 `bbc166f`。原则：**只输出 Home Assistant 标准值，砍掉一切非标准兼容**（含彩云卡片兼容）。允许 breaking change。
 
 ## 1. 破坏性变更（升级前必读）
