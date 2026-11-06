@@ -1,12 +1,18 @@
 {
   "domain": "tianqi",
   "name": "天气预报",
-  "codeowners": ["@al-one"],
+  "codeowners": [
+    "@al-one"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/hasscc/tianqi",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/hasscc/tianqi/issues",
   "requirements": [],
-  "version": "0.0.0"
+  "version": "1.0.0",
+  "integration_type": "service",
+  "loggers": [
+    "custom_components.tianqi"
+  ]
 }

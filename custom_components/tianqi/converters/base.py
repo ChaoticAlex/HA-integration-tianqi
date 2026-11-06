@@ -1,6 +1,10 @@
+"""上游字段 -> HA 标准实体/属性的转换器。"""
+
 from dataclasses import dataclass
 from typing import Any, Optional, TYPE_CHECKING
 import re
+
+from .const import as_float, wind_bearing_to_degrees, wind_force_to_kmh
 
 if TYPE_CHECKING:
     from .. import TianqiClient as Client
@@ -46,40 +50,64 @@ class NumberSensorConv(SensorConv):
     precision: Optional[int] = 1
 
     def decode(self, client: "Client", payload: dict, value: Any):
-        try:
-            val = float(f'{value}'.strip().replace(self.unit, ''))
-            val = round(val, self.precision)
-        except (TypeError, ValueError):
-            val = None
-        payload[self.attr] = val
+        val = as_float(value)
+        payload[self.attr] = round(val, self.precision) if val is not None else None
 
 
 @dataclass
 class WindSpeedSensorConv(NumberSensorConv):
+    """风速传感器，HA 标准 wind_speed + km/h。"""
+
     attr: str = 'wind_speed'
     prop: Optional[str] = 'wse'
     unit: Optional[str] = 'km/h'
     option = {
         'device_class': 'wind_speed',
         'state_class': 'measurement',
-        'unit_of_measurement': unit,
+        'unit_of_measurement': 'km/h',
     }
-    childs = {
-        'wind_direction',
-        'wind_direction_code',
-        'wind_level',
-        'wind_speed_and_unit',
+
+
+@dataclass
+class WindBearingSensorConv(Converter):
+    """风向传感器，HA 标准 wind_direction + 度（0=北，顺时针），文本进属性。"""
+
+    attr: str = 'wind_bearing'
+    prop: Optional[str] = 'WD'
+    domain: Optional[str] = 'sensor'
+    option = {
+        'device_class': 'wind_direction',
+        'state_class': 'measurement_angle',
+        'unit_of_measurement': '°',
+        'icon': 'mdi:compass-outline',
     }
 
     def decode(self, client: "Client", payload: dict, value: Any):
-        super().decode(client, payload, value)
         dataSK = client.data.get('dataSK') or {}
-        payload.update({
-            'wind_direction': dataSK.get('WD'),
-            'wind_direction_code': dataSK.get('wde'),
-            'wind_level': dataSK.get('WS'),
-            'wind_speed_and_unit': dataSK.get('wse'),
-        })
+        text = value or dataSK.get('wde')
+        payload[self.attr] = wind_bearing_to_degrees(text)
+        payload['wind_bearing_text'] = dataSK.get('WD') or dataSK.get('wde')
+
+
+@dataclass
+class WindForceSensorConv(Converter):
+    """蒲福风级（上游 "2级"），无标准 device_class，默认不启用。"""
+
+    attr: str = 'wind_force'
+    prop: Optional[str] = 'WS'
+    domain: Optional[str] = 'sensor'
+    enabled: Optional[bool] = False
+    option = {
+        'state_class': 'measurement',
+        'unit_of_measurement': '级',
+        'icon': 'mdi:weather-windy',
+    }
+
+    def decode(self, client: "Client", payload: dict, value: Any):
+        text = f'{value or ""}'
+        match = re.search(r'\d+(?:\.\d+)?', text)
+        payload[self.attr] = float(match.group(0)) if match else None
+
 
 @dataclass
 class ForecastMinutelySensorConv(SensorConv):
@@ -136,11 +164,9 @@ class AlarmsBinarySensorConv(Converter):
                 'province': v.get('w1'),
                 'city': v.get('w2'),
                 'code': alarm_code,
-                'alertld': v.get('w16'),
+                'alert_id': v.get('w16'),
                 'link': client.web_url('warning/publish_area.shtml?code=%s' % client.area_id),
             })
         payload['warning'] = len(alarms) > 0
         payload['title'] = ', '.join(dict.fromkeys(titles))
         payload['alarms'] = alarms
-        src = client.web_url('m2/i/about/alarmpic/%s.gif' % code, 'www') if code else None
-        self.option['entity_picture'] = f'https://cfrp.hacs.vip/{src}' if src else None

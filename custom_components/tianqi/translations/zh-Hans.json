@@ -1,0 +1,49 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "天气预报（中国天气网）",
+        "description": "{tip}",
+        "data": {
+          "domain": "服务器域",
+          "search": "搜索地点",
+          "area_id": "选择地点"
+        }
+      }
+    },
+    "error": {},
+    "abort": {
+      "already_configured": "该区域已经配置过了"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "天气预报（中国天气网）",
+        "description": "{tip}",
+        "data": {
+          "domain": "服务器域"
+        }
+      }
+    },
+    "error": {}
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {"name": "气温"},
+      "humidity": {"name": "相对湿度"},
+      "atmospheric_pressure": {"name": "气压"},
+      "visibility": {"name": "能见度"},
+      "precipitation": {"name": "降水量(1小时)"},
+      "precipitation_24h": {"name": "降水量24h"},
+      "pm25": {"name": "PM2.5"},
+      "wind_speed": {"name": "风速"},
+      "wind_bearing": {"name": "风向"},
+      "wind_force": {"name": "风力等级"},
+      "forecast_minutely": {"name": "分钟级降水"}
+    },
+    "binary_sensor": {
+      "warning": {"name": "气象预警"}
+    }
+  }
+}

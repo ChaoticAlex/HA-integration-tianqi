@@ -2,29 +2,27 @@
   "config": {
     "step": {
       "user": {
-        "title": "天气",
+        "title": "Weather (weather.com.cn)",
         "description": "{tip}",
         "data": {
-          "domain": "服务器域",
-          "search": "搜索地点",
-          "area_id": "选择地点",
-          "caiyun": "兼容彩云卡片"
+          "domain": "Server domain",
+          "search": "Search location",
+          "area_id": "Location"
         }
       }
     },
     "error": {},
     "abort": {
-      "already_configured": "该区域已经配置过了"
+      "already_configured": "This area is already configured"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "天气",
+        "title": "Weather (weather.com.cn)",
         "description": "{tip}",
         "data": {
-          "domain": "服务器域",
-          "caiyun": "兼容彩云卡片"
+          "domain": "Server domain"
         }
       }
     },
@@ -32,23 +30,20 @@
   },
   "entity": {
     "sensor": {
-      "precipitation_24h": {
-        "name": "降水量24h"
-      },
-      "visibility": {
-        "name": "能见度"
-      },
-      "forecast_minutely": {
-        "name": "实时预报"
-      },
-      "limit_number": {
-        "name": "限行"
-      }
+      "temperature": {"name": "Temperature"},
+      "humidity": {"name": "Humidity"},
+      "atmospheric_pressure": {"name": "Pressure"},
+      "visibility": {"name": "Visibility"},
+      "precipitation": {"name": "Precipitation (1h)"},
+      "precipitation_24h": {"name": "Precipitation (24h)"},
+      "pm25": {"name": "PM2.5"},
+      "wind_speed": {"name": "Wind speed"},
+      "wind_bearing": {"name": "Wind direction"},
+      "wind_force": {"name": "Wind force"},
+      "forecast_minutely": {"name": "Minutely forecast"}
     },
     "binary_sensor": {
-      "warning": {
-        "name": "预警"
-      }
+      "warning": {"name": "Weather warning"}
     }
   }
 }

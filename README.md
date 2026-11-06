@@ -1,53 +1,53 @@
-# ☁️ 天气预报
+# ☁️ 天气预报（中国天气网）
 
+Home Assistant 自定义集成，用 `weather` 实体提供中国天气网的实况、15 日预报、逐时预报、气象预警与分钟级降水。
+**严格输出 Home Assistant 标准字段**，不提供任何第三方卡片兼容层。
 
-本集成为HomeAssistant的中国用户提供天气实体(`weather`)，支持15天及逐小时预报、各种生活指数，兼容[彩云卡片](https://github.com/fineemb/lovelace-colorfulclouds-weather-card)，无需申请appkey。
+> 数据全部来自 `weather.com.cn` 自有接口（中国气象局/华风气象传媒）。本集成未申请任何 appkey，走的是网页/App 内部接口，上游改版会失效。
+> 数据语义与字段换算见 [`CHANGES.md`](CHANGES.md)；改造前审计见 [`AUDIT.md`](AUDIT.md)。
 
+## 实体
 
-> **Note**
-> 
-> 如果你想使用彩云卡片，请在配置集成时勾选`兼容彩云卡片`。
->
-> 由于没有云层覆盖率和24小时后的降水量数据，且彩云卡片需要这些数据，本集成提供的云层覆盖率及降水量(24至48小时)是根据天气状况给的固定数据，仅供参考。
+| 实体 | 说明 |
+|---|---|
+| `weather.<站>` | condition / 温度 / 湿度 / 气压 / 风速 / **风向(°) ** / 能见度；日预报 15 天 + 逐时预报 48 小时 |
+| `sensor.<站>_wind_bearing` | `device_class: wind_direction`，单位 `°`，0=北 顺时针 |
+| `sensor.<站>_wind_speed` | `device_class: wind_speed`，km/h |
+| `sensor.<站>_wind_force` | 蒲福风级（默认不启用） |
+| `sensor.<站>_temperature` / `_humidity` / `_atmospheric_pressure` / `_visibility` | 实况 |
+| `sensor.<站>_precipitation` / `_precipitation_24h` | 1h / 24h 降水量，mm |
+| `sensor.<站>_pm25` | PM2.5 |
+| `sensor.<站>_forecast_minutely` | 分钟级降水描述 + 未来 2 小时逐 6 分钟值（属性） |
+| `binary_sensor.<站>_warning` | `device_class: problem`，预警状态 + `alarms` 明细 |
 
+## 安装
 
-<a name="install"></a>
-## 安装/更新
+1. HACS：添加自定义仓库 `https://github.com/<你的用户名>/tianqi`，类型 `Integration`。
+2. 或手动：下载仓库，复制 `custom_components/tianqi` 到 HA 的 `custom_components/` 目录。
 
-> 以下几种方法任选其一！
+最低 Home Assistant `2023.9.0`。
 
-#### 方法1: [HACS (**点击这里安装**)](https://my.home-assistant.io/redirect/hacs_repository/?owner=hasscc&repository=tianqi&category=integration)
-
-#### 方法2: 通过 Samba / SFTP 手动安装
-> [下载](https://github.com/hasscc/tianqi/archive/main.zip)解压并复制`custom_components/tianqi`文件夹到HA配置目录下的`custom_components`文件夹
-
-#### 方法3: 通过`SSH`或`Terminal & SSH`加载项执行一键安装命令
-```shell
-wget -O - https://hacs.vip/get | DOMAIN=tianqi bash -
-```
-
-#### 方法4: `shell_command`服务
-1. 复制代码到HA配置文件 `configuration.yaml`
-    ```yaml
-    shell_command:
-      update_tianqi: |-
-        wget -O - https://hacs.vip/get | DOMAIN=tianqi bash -
-    ```
-2. 重启HA使配置生效
-3. 在开发者工具中执行服务 [`service: shell_command.update_tianqi`](https://my.home-assistant.io/redirect/developer_call_service/?service=shell_command.update_tianqi)
-4. 再次重启HA使插件生效
-
-
-<a name="config"></a>
 ## 配置
 
-> [⚙️ 配置](https://my.home-assistant.io/redirect/config) > 设备与服务 > [🧩 集成](https://my.home-assistant.io/redirect/integrations) > [➕ 添加集成](https://my.home-assistant.io/redirect/config_flow_start?domain=tianqi) > 🔍 搜索 [`天气预报`](https://my.home-assistant.io/redirect/config_flow_start?domain=tianqi)
+`设置 > 设备与服务 > 添加集成 > 天气预报`，搜索城市/区县后选择地点。地点留空则按 HA 配置的经纬度自动匹配最近站点。
 
+> 注意：区县实况与所属城市站常为同一份观测数据，报的是城市站，不是你门口。
 
-## 截图
-<img width="800" alt="tianqi" src="https://github.com/hasscc/tianqi/assets/4549099/545e5c98-dce3-46b6-95c0-3e42d8a26a9a">
+## 开发
+
+```bash
+python3 -m unittest discover -s tests -v   # 20 个断言，无需 HA
+python3 scripts/live_check.py 101280101    # 打上游接口，打印"改造后"标准值
+```
+
+## 已知限制
+
+- 15 日预报 48 小时后为延伸期预报，仅供趋势参考。
+- 分钟级降水是雷达外推，只对已生成的降水有效。
+- `mpf.weather.com.cn` 证书已过期（2026-09-28），集成对该节点跳过校验；上游修复后应改回。
+- 无 24 小时后的真实降水量/云量，这些字段不再输出，不再用天气码硬造。
 
 ## 相关链接
 
-- 使用教程: https://mp.weixin.qq.com/s/_4aFbsb40qPgII-kYB3phA
-- [安装彩云卡片(HACS)](https://my.home-assistant.io/redirect/hacs_repository/?owner=fineemb&repository=lovelace-colorfulclouds-weather-card&category=lovelace)
+- 上游接口来源：中国天气网 <https://www.weather.com.cn/>
+- 原仓库：<https://github.com/hasscc/tianqi>

@@ -76,7 +76,6 @@ class TianqiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_DOMAIN, default=user_input.get(CONF_DOMAIN, latest_domain)): str,
             vol.Optional(CONF_SEARCH, default=''): str,
             **schema,
-            vol.Optional('caiyun', default=user_input.get('caiyun', False)): bool,
         }
         return self.async_show_form(
             step_id='user',
@@ -117,7 +116,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             step_id='init',
             data_schema=vol.Schema({
                 vol.Required(CONF_DOMAIN, default=defaults.get(CONF_DOMAIN)): str,
-                vol.Optional('caiyun', default=defaults.get('caiyun', False)): bool,
             }),
             description_placeholders={'tip': self.context.pop('last_error', '')},
         )

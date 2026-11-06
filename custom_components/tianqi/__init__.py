@@ -8,7 +8,7 @@ import voluptuous as vol
 
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Callable, Set, Type, Tuple
+from typing import Callable, Optional, Set, Tuple, Type
 
 from homeassistant.const import (
     Platform,
@@ -234,6 +234,8 @@ class TianqiClient:
             'Referer': HTTP_REFERER,
             'User-Agent': USER_AGENT,
         }
+        # 注：mpf.weather.com.cn 证书已过期（notAfter=2026-09-28），
+        # 故对这些节点 verify_ssl=False；上游修好证书后应改回 True。
 
         self.coordinators = [
             DataUpdateCoordinator(
@@ -319,11 +321,10 @@ class TianqiClient:
                 'unit_of_measurement': UnitOfLength.KILOMETERS,
             }),
             WindSpeedSensorConv(),
+            WindBearingSensorConv(),
+            WindForceSensorConv(),
             AlarmsBinarySensorConv(),
             ForecastMinutelySensorConv(),
-            SensorConv('limit_number', prop='limitnumber', enabled=False).with_option({
-                'icon': 'mdi:counter',
-            }),
         )
 
     @staticmethod
